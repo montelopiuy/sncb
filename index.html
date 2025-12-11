@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNCB GO - Navigation Intelligente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active {
+            background: white;
+            color: #667eea;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f44336;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.3);
+        }
+
+        .status-card.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        }
+
+        .status-card.danger {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+
+        .status-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .status-info {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .countdown {
+            font-size: 3em;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .train-details {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+        }
+
+        .stations-list {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .station-item {
+            padding: 15px;
+            border-left: 4px solid #e0e0e0;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+
+        .station-item.current {
+            border-color: #4CAF50;
+            background: #f1f8f4;
+        }
+
+        .station-item.passed {
+            opacity: 0.5;
+            border-color: #ccc;
+        }
+
+        .station-item.next {
+            border-color: #ff9800;
+            background: #fff8f0;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-left-width: 4px; }
+            50% { border-left-width: 8px; }
+        }
+
+        .notification-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .error-message {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .distance-info {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .countdown {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚄 SNCB GO</h1>
+            <p>Navigation intelligente en temps réel</p>
+        </header>
+
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('plan', this)">📍 Planifier</button>
+            <button class="mode-btn" onclick="switchMode('go', this)">🚀 GO Mode</button>
+        </div>
+
+        <!-- Mode Planification -->
+        <div id="plan-mode">
+            <div class="card">
+                <div class="input-group">
+                    <label for="to">Où allez-vous ?</label>
+                    <input type="text" id="to" list="stations-list" placeholder="Ex: Bruxelles-Central">
+                    <datalist id="stations-list"></datalist>
+                </div>
+
+                <button class="btn" onclick="findNearestStation()">🎯 Détecter ma position et partir</button>
+            </div>
+        </div>
+
+        <!-- Mode GO -->
+        <div id="go-mode" class="hidden">
+            <!-- Attente du train -->
+            <div id="waiting-state" class="hidden">
+                <div class="status-card">
+                    <div class="status-title">🚉 En attente à la gare</div>
+                    <div class="status-info">
+                        <strong id="departure-station"></strong>
+                    </div>
+                    <div class="countdown" id="countdown">--:--</div>
+                    <div class="status-info">
+                        Votre train arrive dans
+                    </div>
+                    <div class="train-details">
+                        <div class="detail-row">
+                            <span class="detail-label">🚂 Train</span>
+                            <span id="train-name">--</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">🚉 Quai</span>
+                            <span id="train-platform">--</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">🎯 Direction</span>
+                            <span id="train-direction">--</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">⏱️ Heure de départ</span>
+                            <span id="train-time">--</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="startJourney()">🚀 Je suis dans le train</button>
+                <button class="btn btn-secondary" onclick="cancelJourney()">❌ Annuler</button>
+            </div>
+
+            <!-- Dans le train -->
+            <div id="traveling-state" class="hidden">
+                <div class="status-card warning">
+                    <div class="status-title">🚂 En voyage</div>
+                    <div class="status-info">
+                        Prochain arrêt : <strong id="next-stop">--</strong>
+                    </div>
+                    <div class="countdown" id="next-stop-time">--:--</div>
+                    <div class="distance-info" id="distance-info">Calcul de la distance...</div>
+                </div>
+
+                <div class="stations-list">
+                    <h3 style="margin-bottom: 15px;">📍 Arrêts restants</h3>
+                    <div id="stations-remaining"></div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="cancelJourney()">❌ Terminer le trajet</button>
+            </div>
+
+            <!-- Arrivée proche -->
+            <div id="arrival-state" class="hidden">
+                <div class="status-card danger">
+                    <div class="status-title">⚠️ PRÉPAREZ-VOUS À DESCENDRE</div>
+                    <div class="status-info">
+                        Vous arrivez à <strong id="arrival-station">--</strong>
+                    </div>
+                    <div class="countdown" id="arrival-countdown">--:--</div>
+                    <div class="train-details">
+                        <div class="detail-row">
+                            <span class="detail-label">🚉 Quai d'arrivée</span>
+                            <span id="arrival-platform">--</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="arrivedAtDestination()">✅ Je suis arrivé</button>
+            </div>
+        </div>
+
+        <div class="loading hidden" id="loading">
+            <div class="spinner"></div>
+            <p>Recherche en cours...</p>
+        </div>
+    </div>
+
+    <script>
+        let stationsData = [];
+        let currentConnection = null;
+        let currentPosition = null;
+        let positionWatcher = null;
+        let countdownInterval = null;
+        let journeyStops = [];
+        let currentStopIndex = 0;
+        let notificationShown = {};
+
+        // Demander la permission pour les notifications
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Charger les gares
+        window.onload = async function() {
+            await loadStations();
+        };
+
+        async function loadStations() {
+            try {
+                const response = await fetch('https://api.irail.be/stations/?format=json&lang=fr');
+                const data = await response.json();
+                stationsData = data.station;
+                
+                const stationsList = document.getElementById('stations-list');
+                data.station.forEach(station => {
+                    const option = document.createElement('option');
+                    option.value = station.standardname;
+                    stationsList.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erreur chargement gares:', error);
+            }
+        }
+
+        function switchMode(mode, btn) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            
+            if (mode === 'plan') {
+                document.getElementById('plan-mode').classList.remove('hidden');
+                document.getElementById('go-mode').classList.add('hidden');
+            } else {
+                document.getElementById('plan-mode').classList.add('hidden');
+                document.getElementById('go-mode').classList.remove('hidden');
+            }
+        }
+
+        async function findNearestStation() {
+            const destination = document.getElementById('to').value.trim();
+            if (!destination) {
+                showNotification('Veuillez choisir une destination', 'error');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+
+            try {
+                // Obtenir la position
+                const position = await getCurrentPosition();
+                currentPosition = position;
+
+                // Trouver la gare la plus proche
+                const nearestStation = findClosestStation(position.coords.latitude, position.coords.longitude);
+                
+                // Chercher la prochaine connexion
+                const connection = await searchNextConnection(nearestStation.standardname, destination);
+                
+                if (connection) {
+                    currentConnection = connection;
+                    setupWaitingState(connection, nearestStation.standardname);
+                    const goBtn = document.querySelectorAll('.mode-btn')[1];
+                    switchMode('go', goBtn);
+                } else {
+                    showNotification('Aucune connexion trouvée', 'error');
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                showNotification('Erreur: ' + error.message, 'error');
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('La géolocalisation n\'est pas supportée'));
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
+            });
+        }
+
+        function findClosestStation(lat, lon) {
+            let closest = null;
+            let minDistance = Infinity;
+
+            stationsData.forEach(station => {
+                const distance = calculateDistance(lat, lon, station.locationY, station.locationX);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closest = station;
+                }
+            });
+
+            return closest;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Rayon de la Terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        async function searchNextConnection(from, to) {
+            const now = new Date();
+            const dateStr = String(now.getDate()).padStart(2, '0') + 
+                           String(now.getMonth() + 1).padStart(2, '0') + 
+                           String(now.getFullYear()).slice(2);
+            const timeStr = String(now.getHours()).padStart(2, '0') + 
+                           String(now.getMinutes()).padStart(2, '0');
+
+            const url = `https://api.irail.be/connections/?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${dateStr}&time=${timeStr}&format=json&lang=fr&typeOfTransport=automatic`;
+            
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.connection && data.connection.length > 0) {
+                return data.connection[0];
+            }
+            return null;
+        }
+
+        function setupWaitingState(connection, stationName) {
+            document.getElementById('waiting-state').classList.remove('hidden');
+            document.getElementById('traveling-state').classList.add('hidden');
+            document.getElementById('arrival-state').classList.add('hidden');
+
+            document.getElementById('departure-station').textContent = stationName;
+            document.getElementById('train-name').textContent = connection.departure.vehicle.split('.').pop();
+            document.getElementById('train-platform').textContent = connection.departure.platform || 'Non spécifié';
+            document.getElementById('train-direction').textContent = connection.departure.direction?.name || connection.arrival.station;
+            
+            const depTime = new Date(parseInt(connection.departure.time) * 1000);
+            document.getElementById('train-time').textContent = formatTime(depTime);
+
+            // Préparer les arrêts
+            journeyStops = [];
+            
+            // Ajouter le départ
+            journeyStops.push({
+                name: connection.departure.station,
+                time: parseInt(connection.departure.time),
+                platform: connection.departure.platform,
+                lat: null,
+                lon: null
+            });
+
+            // Ajouter les correspondances
+            if (connection.vias && connection.vias.via) {
+                const vias = Array.isArray(connection.vias.via) ? connection.vias.via : [connection.vias.via];
+                vias.forEach(via => {
+                    journeyStops.push({
+                        name: via.station,
+                        time: parseInt(via.arrival.time),
+                        platform: via.arrival.platform,
+                        lat: via.stationinfo?.locationY,
+                        lon: via.stationinfo?.locationX
+                    });
+                });
+            }
+
+            // Ajouter l'arrivée
+            journeyStops.push({
+                name: connection.arrival.station,
+                time: parseInt(connection.arrival.time),
+                platform: connection.arrival.platform,
+                lat: null,
+                lon: null
+            });
+
+            // Récupérer les coordonnées des gares
+            journeyStops.forEach(stop => {
+                const station = stationsData.find(s => s.standardname === stop.name || s.name === stop.name);
+                if (station) {
+                    stop.lat = station.locationY;
+                    stop.lon = station.locationX;
+                }
+            });
+
+            startCountdown(depTime);
+        }
+
+        function startCountdown(targetTime) {
+            if (countdownInterval) clearInterval(countdownInterval);
+
+            countdownInterval = setInterval(() => {
+                const now = new Date();
+                const diff = targetTime - now;
+
+                if (diff <= 0) {
+                    clearInterval(countdownInterval);
+                    document.getElementById('countdown').textContent = '00:00';
+                    return;
+                }
+
+                const minutes = Math.floor(diff / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+                document.getElementById('countdown').textContent = 
+                    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function startJourney() {
+            document.getElementById('waiting-state').classList.add('hidden');
+            document.getElementById('traveling-state').classList.remove('hidden');
+            
+            currentStopIndex = 1; // Commence au premier arrêt après le départ
+            notificationShown = {};
+            
+            updateTravelingState();
+            
+            // Commencer le suivi de position
+            if (navigator.geolocation) {
+                positionWatcher = navigator.geolocation.watchPosition(
+                    onPositionUpdate,
+                    (error) => console.error('Erreur position:', error),
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            }
+        }
+
+        function updateTravelingState() {
+            if (currentStopIndex >= journeyStops.length) {
+                arrivedAtDestination();
+                return;
+            }
+
+            const nextStop = journeyStops[currentStopIndex];
+            document.getElementById('next-stop').textContent = nextStop.name;
+            
+            const nextTime = new Date(nextStop.time * 1000);
+            startCountdown(nextTime);
+            document.getElementById('next-stop-time').textContent = formatTime(nextTime);
+
+            // Afficher les arrêts restants
+            const remainingHtml = journeyStops.slice(currentStopIndex).map((stop, index) => {
+                const className = index === 0 ? 'next' : '';
+                const time = new Date(stop.time * 1000);
+                return `
+                    <div class="station-item ${className}">
+                        <strong>${stop.name}</strong>
+                        <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                            ${formatTime(time)} ${stop.platform ? '- Quai ' + stop.platform : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('stations-remaining').innerHTML = remainingHtml;
+        }
+
+        function onPositionUpdate(position) {
+            currentPosition = position;
+            
+            if (currentStopIndex >= journeyStops.length) return;
+
+            const nextStop = journeyStops[currentStopIndex];
+            if (!nextStop.lat || !nextStop.lon) return;
+
+            const distance = calculateDistance(
+                position.coords.latitude,
+                position.coords.longitude,
+                nextStop.lat,
+                nextStop.lon
+            );
+
+            document.getElementById('distance-info').textContent = 
+                `📍 Distance jusqu'au prochain arrêt: ${distance.toFixed(1)} km`;
+
+            // Si on est à moins de 1km du prochain arrêt et qu'on n'a pas encore notifié
+            if (distance < 1 && !notificationShown[currentStopIndex]) {
+                notificationShown[currentStopIndex] = true;
+                
+                // Vérifier si c'est l'arrêt final
+                if (currentStopIndex === journeyStops.length - 1) {
+                    showArrivalAlert();
+                } else {
+                    showApproachingNotification(nextStop);
+                }
+            }
+
+            // Si on est très proche (< 200m), passer à l'arrêt suivant
+            if (distance < 0.2) {
+                currentStopIndex++;
+                if (currentStopIndex < journeyStops.length) {
+                    updateTravelingState();
+                }
+            }
+        }
+
+        function showApproachingNotification(stop) {
+            showNotification(`🔔 Prochain arrêt: ${stop.name}${stop.platform ? ' - Quai ' + stop.platform : ''}`, 'warning');
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('🚉 Prochain arrêt', {
+                    body: `${stop.name}${stop.platform ? ' - Quai ' + stop.platform : ''}`,
+                    icon: '🚂',
+                    vibrate: [200, 100, 200]
+                });
+            }
+        }
+
+        function showArrivalAlert() {
+            const finalStop = journeyStops[journeyStops.length - 1];
+            
+            document.getElementById('traveling-state').classList.add('hidden');
+            document.getElementById('arrival-state').classList.remove('hidden');
+            
+            document.getElementById('arrival-station').textContent = finalStop.name;
+            document.getElementById('arrival-platform').textContent = finalStop.platform || 'Non spécifié';
+            
+            const arrivalTime = new Date(finalStop.time * 1000);
+            startCountdown(arrivalTime);
+            document.getElementById('arrival-countdown').textContent = formatTime(arrivalTime);
+
+            showNotification('⚠️ PRÉPAREZ-VOUS À DESCENDRE !', 'danger');
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('⚠️ PRÉPAREZ-VOUS À DESCENDRE', {
+                    body: `Vous arrivez à ${finalStop.name}`,
+                    icon: '🚂',
+                    vibrate: [300, 100, 300, 100, 300],
+                    requireInteraction: true
+                });
+            }
+
+            // Faire vibrer le téléphone
+            if ('vibrate' in navigator) {
+                navigator.vibrate([500, 200, 500, 200, 500]);
+            }
+        }
+
+        function arrivedAtDestination() {
+            if (positionWatcher) {
+                navigator.geolocation.clearWatch(positionWatcher);
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            showNotification('✅ Bon voyage terminé !', 'success');
+            
+            setTimeout(() => {
+                const planBtn = document.querySelectorAll('.mode-btn')[0];
+                switchMode('plan', planBtn);
+                resetStates();
+            }, 2000);
+        }
+
+        function cancelJourney() {
+            if (positionWatcher) {
+                navigator.geolocation.clearWatch(positionWatcher);
+            }
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            resetStates();
+            const planBtn = document.querySelectorAll('.mode-btn')[0];
+            switchMode('plan', planBtn);
+        }
+
+        function resetStates() {
+            document.getElementById('waiting-state').classList.add('hidden');
+            document.getElementById('traveling-state').classList.add('hidden');
+            document.getElementById('arrival-state').classList.add('hidden');
+            currentConnection = null;
+            journeyStops = [];
+            currentStopIndex = 0;
+            notificationShown = {};
+        }
+
+        function showNotification(message, type = 'success') {
+            const badge = document.createElement('div');
+            badge.className = 'notification-badge';
+            badge.textContent = message;
+            
+            if (type === 'error') badge.style.background = '#f44336';
+            if (type === 'warning') badge.style.background = '#ff9800';
+            if (type === 'danger') badge.style.background = '#f44336';
+            
+            document.body.appendChild(badge);
+            
+            setTimeout(() => {
+                badge.remove();
+            }, 4000);
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('fr-BE', { hour: '2-digit', minute: '2-digit' });
+        }
+    </script>
+</body>
+</html>
