@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNCB GO</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
+.container{max-width:600px;margin:0 auto}
+header{text-align:center;color:#fff;margin-bottom:30px}
+h1{font-size:2em;text-shadow:2px 2px 4px rgba(0,0,0,.3)}
+.mode-selector{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.mode-btn{padding:12px 8px;background:rgba(255,255,255,.2);color:#fff;border:2px solid #fff;border-radius:10px;font-weight:600;cursor:pointer;transition:.3s}
+.mode-btn.active{background:#fff;color:#667eea}
+.card{background:#fff;border-radius:20px;padding:25px;box-shadow:0 20px 60px rgba(0,0,0,.3);margin-bottom:20px}
+.input-group{margin-bottom:20px}
+label{display:block;margin-bottom:8px;color:#333;font-weight:600;font-size:.95em}
+input,select{width:100%;padding:15px;border:2px solid #e0e0e0;border-radius:10px;font-size:1em;transition:.3s}
+input:focus{outline:0;border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.1)}
+.btn{width:100%;padding:16px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:0;border-radius:10px;font-weight:600;cursor:pointer;margin-bottom:10px;transition:.3s}
+.btn:hover{transform:translateY(-2px)}
+.btn-secondary{background:#f44336}
+.btn-small{padding:10px;font-size:.9em}
+.loading,.hidden{display:none}
+.loading{text-align:center;padding:40px;color:#fff}
+.spinner{border:4px solid rgba(255,255,255,.3);border-top:4px solid #fff;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status-card{color:#fff;padding:25px;border-radius:15px;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.status-card{background:linear-gradient(135deg,#4caf50 0%,#45a049 100%)}
+.status-card.warning{background:linear-gradient(135deg,#ff9800 0%,#f57c00 100%)}
+.status-card.danger{background:linear-gradient(135deg,#f44336 0%,#d32f2f 100%)}
+.status-title{font-size:1.4em;font-weight:700;margin-bottom:15px}
+.status-info{font-size:1.1em;line-height:1.6}
+.countdown{font-size:2.5em;font-weight:700;text-align:center;margin:20px 0}
+.train-details{background:rgba(255,255,255,.2);padding:15px;border-radius:10px;margin-top:15px}
+.detail-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.3)}
+.detail-row:last-child{border-bottom:0}
+.stations-list{background:#fff;border-radius:10px;padding:20px;margin-top:20px}
+.station-item{padding:15px;border-left:4px solid #e0e0e0;margin-bottom:10px;border-radius:5px}
+.station-item.next{border-color:#ff9800;background:#fff8f0;animation:pulse 2s infinite}
+@keyframes pulse{50%{border-left-width:8px}}
+.notification-badge{position:fixed;top:20px;right:20px;background:#4caf50;color:#fff;padding:15px 25px;border-radius:10px;box-shadow:0 5px 20px rgba(0,0,0,.3);z-index:1000;animation:slideIn .3s}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0}}
+.favorite-item{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;border-radius:15px;margin-bottom:15px;cursor:pointer;transition:.3s;position:relative}
+.favorite-item:hover{transform:translateY(-3px)}
+.favorite-route{font-size:1.2em;font-weight:700;margin-bottom:5px}
+.favorite-subtitle{font-size:.9em;opacity:.9}
+.favorite-delete{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.3);color:#fff;border:0;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:1.2em}
+.favorite-delete:hover{background:#f44336}
+.quick-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin-bottom:20px}
+.quick-action{background:#fff;padding:20px;border-radius:15px;text-align:center;cursor:pointer;transition:.3s;box-shadow:0 5px 15px rgba(0,0,0,.2)}
+.quick-action:hover{transform:translateY(-5px)}
+.quick-action-icon{font-size:2.5em;margin-bottom:10px}
+.quick-action-label{font-weight:600;color:#333}
+.history-item{background:#fff;padding:15px;border-radius:10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.history-item:hover{background:#f5f5f5;transform:translateX(5px)}
+.history-time{font-size:.85em;color:#999}
+.swap-btn{background:#667eea;color:#fff;border:0;border-radius:50%;width:45px;height:45px;font-size:1.3em;cursor:pointer;margin:0 auto;display:block}
+.swap-btn:hover{transform:rotate(180deg);background:#764ba2}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🚄 SNCB GO</h1>
+<p>Navigation intelligente</p>
+</header>
+<div class="mode-selector">
+<button class="mode-btn active" onclick="switchMode('plan',this)">📍 Plan</button>
+<button class="mode-btn" onclick="switchMode('fav',this)">⭐ Favoris</button>
+<button class="mode-btn" onclick="switchMode('go',this)">🚀 GO</button>
+</div>
+<div id="plan-mode">
+<div class="quick-actions">
+<div class="quick-action" onclick="quickGo()">
+<div class="quick-action-icon">📍</div>
+<div class="quick-action-label">Départ immédiat</div>
+</div>
+<div class="quick-action" onclick="showLiveboard()">
+<div class="quick-action-icon">🚉</div>
+<div class="quick-action-label">Départs</div>
+</div>
+<div class="quick-action" onclick="toggleTime()">
+<div class="quick-action-icon">⏰</div>
+<div class="quick-action-label">Plus tard</div>
+</div>
+<div class="quick-action" onclick="showHistory()">
+<div class="quick-action-icon">📜</div>
+<div class="quick-action-label">Historique</div>
+</div>
+</div>
+<div class="card">
+<div class="input-group">
+<label for="from">🚉 Départ</label>
+<input type="text" id="from" list="stations-from" placeholder="Position actuelle">
+<datalist id="stations-from"></datalist>
+</div>
+<button class="swap-btn" onclick="swap()">⇅</button>
+<div class="input-group">
+<label for="to">🎯 Destination</label>
+<input type="text" id="to" list="stations-to" placeholder="Où allez-vous?">
+<datalist id="stations-to"></datalist>
+</div>
+<div class="input-group hidden" id="time-selector">
+<label for="datetime">📅 Date et heure</label>
+<input type="datetime-local" id="datetime">
+</div>
+<button class="btn" onclick="search()">🔍 Rechercher</button>
+<button class="btn btn-small" onclick="saveFav()">⭐ Favori</button>
+</div>
+<div id="history-section" class="card hidden">
+<h3 style="margin-bottom:15px">📜 Récents</h3>
+<div id="history-list"></div>
+</div>
+<div id="liveboard-section" class="card hidden">
+<h3 style="margin-bottom:15px">🚉 Départs</h3>
+<div id="liveboard-list"></div>
+</div>
+</div>
+<div id="fav-mode" class="hidden">
+<div class="card">
+<h3 style="margin-bottom:20px">⭐ Favoris</h3>
+<div id="fav-list">
+<p style="text-align:center;color:#999;padding:20px">Aucun favori</p>
+</div>
+</div>
+</div>
+<div id="go-mode" class="hidden">
+<div id="waiting-state" class="hidden">
+<div class="status-card">
+<div class="status-title">🚉 En attente</div>
+<div class="status-info"><strong id="dep-station"></strong></div>
+<div class="countdown" id="countdown">--:--</div>
+<div class="status-info">Train arrive dans</div>
+<div class="train-details">
+<div class="detail-row"><span>🚂 Train</span><span id="train-name">--</span></div>
+<div class="detail-row"><span>🚉 Quai</span><span id="train-platform">--</span></div>
+<div class="detail-row"><span>🎯 Direction</span><span id="train-dir">--</span></div>
+<div class="detail-row"><span>⏱️ Départ</span><span id="train-time">--</span></div>
+</div>
+</div>
+<button class="btn" onclick="startJourney()">🚀 Dans le train</button>
+<button class="btn btn-secondary" onclick="cancel()">❌ Annuler</button>
+</div>
+<div id="travel-state" class="hidden">
+<div class="status-card warning">
+<div class="status-title">🚂 En voyage</div>
+<div class="status-info">Prochain: <strong id="next-stop">--</strong></div>
+<div class="countdown" id="next-time">--:--</div>
+<div id="distance-info" style="font-size:.9em;opacity:.8"></div>
+</div>
+<div class="stations-list">
+<h3 style="margin-bottom:15px">📍 Restants</h3>
+<div id="stations-remaining"></div>
+</div>
+<button class="btn btn-secondary" onclick="cancel()">❌ Terminer</button>
+</div>
+<div id="arrival-state" class="hidden">
+<div class="status-card danger">
+<div class="status-title">⚠️ PRÉPAREZ-VOUS</div>
+<div class="status-info">Arrivée à <strong id="arr-station">--</strong></div>
+<div class="countdown" id="arr-countdown">--:--</div>
+<div class="train-details">
+<div class="detail-row"><span>🚉 Quai</span><span id="arr-platform">--</span></div>
+</div>
+</div>
+<button class="btn" onclick="arrived()">✅ Arrivé</button>
+</div>
+</div>
+<div class="loading" id="loading">
+<div class="spinner"></div>
+<p>Recherche...</p>
+</div>
+</div>
+<script>
+let stations=[],conn=null,pos=null,watch=null,timer=null,stops=[],idx=0,notif={},favs=[],hist=[];
+if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
+window.onload=async()=>{
+await loadStations();
+loadFavs();
+loadHist();
+const now=new Date();
+now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+$('datetime').value=now.toISOString().slice(0,16);
+};
+function $(id){return document.getElementById(id)}
+async function loadStations(){
+try{
+const r=await fetch('https://api.irail.be/stations/?format=json&lang=fr');
+const d=await r.json();
+stations=d.station;
+['from','to'].forEach(id=>{
+const dl=$('stations-'+id);
+d.station.forEach(s=>{
+const o=document.createElement('option');
+o.value=s.standardname;
+dl.appendChild(o);
+});
+});
+}catch(e){console.error(e)}
+}
+function loadFavs(){
+const s=localStorage.getItem('sncb_fav');
+if(s){favs=JSON.parse(s);showFavs();}
+}
+function saveFavs(){localStorage.setItem('sncb_fav',JSON.stringify(favs))}
+function loadHist(){
+const s=localStorage.getItem('sncb_hist');
+if(s)hist=JSON.parse(s);
+}
+function saveHist(){localStorage.setItem('sncb_hist',JSON.stringify(hist))}
+function addHist(f,t){
+hist=hist.filter(h=>!(h.from===f&&h.to===t));
+hist.unshift({from:f,to:t,ts:Date.now()});
+hist=hist.slice(0,10);
+saveHist();
+}
+function showFavs(){
+const l=$('fav-list');
+if(!favs.length){
+l.innerHTML='<p style="text-align:center;color:#999;padding:20px">Aucun favori</p>';
+return;
+}
+l.innerHTML=favs.map((f,i)=>`
+<div class="favorite-item" onclick="useFav(${i})">
+<button class="favorite-delete" onclick="event.stopPropagation();delFav(${i})">×</button>
+<div class="favorite-route">${f.emoji||'🚂'} ${f.name||f.from+' → '+f.to}</div>
+<div class="favorite-subtitle">${f.from} → ${f.to}</div>
+</div>
+`).join('');
+}
+function saveFav(){
+const f=$('from').value.trim(),t=$('to').value.trim();
+if(!f||!t){notify('Saisissez départ et destination','error');return}
+if(favs.find(x=>x.from===f&&x.to===t)){notify('Déjà en favoris','warning');return}
+const n=prompt(`Nom (vide pour "${f} → ${t}"):`);
+const e=prompt('Emoji (ex: 🏠 🏢):')||'🚂';
+favs.push({from:f,to:t,name:n||null,emoji:e,created:Date.now()});
+saveFavs();
+showFavs();
+notify('✅ Favori enregistré','success');
+}
+function useFav(i){
+const f=favs[i];
+$('from').value=f.from;
+$('to').value=f.to;
+switchMode('plan',document.querySelectorAll('.mode-btn')[0]);
+notify('Favori sélectionné','success');
+}
+function delFav(i){
+if(confirm('Supprimer?')){
+favs.splice(i,1);
+saveFavs();
+showFavs();
+notify('Supprimé','success');
+}
+}
+function showHistory(){
+const sec=$('history-section'),list=$('history-list');
+if(!hist.length)list.innerHTML='<p style="text-align:center;color:#999">Aucun</p>';
+else{
+list.innerHTML=hist.map(h=>{
+const d=new Date(h.ts);
+const ts=d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+return `<div class="history-item" onclick="useHist('${h.from}','${h.to}')">
+<div><strong>${h.from}</strong> → <strong>${h.to}</strong>
+<div class="history-time">${ts}</div></div>
+</div>`;
+}).join('');
+}
+sec.classList.toggle('hidden');
+}
+function useHist(f,t){
+$('from').value=f;
+$('to').value=t;
+$('history-section').classList.add('hidden');
+notify('Chargé','success');
+}
+function toggleTime(){
+$('time-selector').classList.toggle('hidden');
+}
+async function showLiveboard(){
+try{
+const p=await getPos();
+const ns=closest(p.coords.latitude,p.coords.longitude);
+$('loading').classList.remove('hidden');
+const now=new Date();
+const ds=pad(now.getDate())+pad(now.getMonth()+1)+String(now.getFullYear()).slice(2);
+const ts=pad(now.getHours())+pad(now.getMinutes());
+const url=`https://api.irail.be/liveboard/?station=${encodeURIComponent(ns.standardname)}&date=${ds}&time=${ts}&format=json&lang=fr`;
+const r=await fetch(url);
+const d=await r.json();
+$('loading').classList.add('hidden');
+const sec=$('liveboard-section'),list=$('liveboard-list');
+if(d.departures&&d.departures.departure){
+const deps=Array.isArray(d.departures.departure)?d.departures.departure:[d.departures.departure];
+list.innerHTML=`<h4 style="margin-bottom:10px">📍 ${ns.standardname}</h4>`+deps.slice(0,10).map(dep=>{
+const t=new Date(parseInt(dep.time)*1000);
+const delay=dep.delay?` (+${Math.floor(parseInt(dep.delay)/60)}min)`:'';
+return `<div class="history-item">
+<div><strong>${dep.vehicle.split('.').pop()}</strong> → ${dep.station}
+<div class="history-time">${fmt(t)}${delay} - Quai ${dep.platform||'?'}</div></div>
+</div>`;
+}).join('');
+sec.classList.remove('hidden');
+}else notify('Aucun départ','error');
+}catch(e){
+$('loading').classList.add('hidden');
+notify('Erreur: '+e.message,'error');
+}
+}
+function swap(){
+const f=$('from').value,t=$('to').value;
+$('from').value=t;
+$('to').value=f;
+}
+function switchMode(m,btn){
+document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+if(btn)btn.classList.add('active');
+$('plan-mode').classList.add('hidden');
+$('fav-mode').classList.add('hidden');
+$('go-mode').classList.add('hidden');
+if(m==='plan')$('plan-mode').classList.remove('hidden');
+else if(m==='fav'){$('fav-mode').classList.remove('hidden');showFavs();}
+else $('go-mode').classList.remove('hidden');
+}
+async function quickGo(){
+const t=$('to').value.trim();
+if(!t){notify('Choisissez une destination','error');return}
+await findNearest();
+}
+async function findNearest(){
+const dest=$('to').value.trim();
+if(!dest){notify('Destination requise','error');return}
+$('loading').classList.remove('hidden');
+try{
+const p=await getPos();
+pos=p;
+const ns=closest(p.coords.latitude,p.coords.longitude);
+const c=await nextConn(ns.standardname,dest);
+if(c){
+conn=c;
+addHist(ns.standardname,dest);
+setupWait(c,ns.standardname);
+switchMode('go',document.querySelectorAll('.mode-btn')[2]);
+}else notify('Aucune connexion','error');
+}catch(e){notify('Erreur: '+e.message,'error')}
+finally{$('loading').classList.add('hidden')}
+}
+async function search(){
+let f=$('from').value.trim();
+const t=$('to').value.trim();
+if(!t){notify('Destination requise','error');return}
+$('loading').classList.remove('hidden');
+try{
+if(!f){
+const p=await getPos();
+const ns=closest(p.coords.latitude,p.coords.longitude);
+f=ns.standardname;
+$('from').value=f;
+}
+const c=await nextConn(f,t);
+if(c){
+conn=c;
+addHist(f,t);
+setupWait(c,f);
+switchMode('go',document.querySelectorAll('.mode-btn')[2]);
+}else notify('Aucune connexion','error');
+}catch(e){notify('Erreur: '+e.message,'error')}
+finally{$('loading').classList.add('hidden')}
+}
+function getPos(){
+return new Promise((res,rej)=>{
+if(!navigator.geolocation){rej(new Error('Géolocalisation non supportée'));return}
+navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+});
+}
+function closest(lat,lon){
+let c=null,min=Infinity;
+stations.forEach(s=>{
+const d=dist(lat,lon,s.locationY,s.locationX);
+if(d<min){min=d;c=s}
+});
+return c;
+}
+function dist(lat1,lon1,lat2,lon2){
+const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+async function nextConn(f,t){
+const now=new Date();
+const ds=pad(now.getDate())+pad(now.getMonth()+1)+String(now.getFullYear()).slice(2);
+const ts=pad(now.getHours())+pad(now.getMinutes());
+const url=`https://api.irail.be/connections/?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}&date=${ds}&time=${ts}&format=json&lang=fr&typeOfTransport=automatic`;
+const r=await fetch(url);
+const d=await r.json();
+return d.connection&&d.connection.length>0?d.connection[0]:null;
+}
+function setupWait(c,sn){
+$('waiting-state').classList.remove('hidden');
+$('travel-state').classList.add('hidden');
+$('arrival-state').classList.add('hidden');
+$('dep-station').textContent=sn;
+$('train-name').textContent=c.departure.vehicle.split('.').pop();
+$('train-platform').textContent=c.departure.platform||'?';
+$('train-dir').textContent=c.departure.direction?.name||c.arrival.station;
+const dt=new Date(parseInt(c.departure.time)*1000);
+$('train-time').textContent=fmt(dt);
+stops=[{name:c.departure.station,time:parseInt(c.departure.time),platform:c.departure.platform,lat:null,lon:null}];
+if(c.vias&&c.vias.via){
+const vs=Array.isArray(c.vias.via)?c.vias.via:[c.vias.via];
+vs.forEach(v=>stops.push({name:v.station,time:parseInt(v.arrival.time),platform:v.arrival.platform,lat:v.stationinfo?.locationY,lon:v.stationinfo?.locationX}));
+}
+stops.push({name:c.arrival.station,time:parseInt(c.arrival.time),platform:c.arrival.platform,lat:null,lon:null});
+stops.forEach(s=>{
+const st=stations.find(x=>x.standardname===s.name||x.name===s.name);
+if(st){s.lat=st.locationY;s.lon=st.locationX}
+});
+startTimer(dt);
+}
+function startTimer(t){
+if(timer)clearInterval(timer);
+timer=setInterval(()=>{
+const diff=t-new Date();
+if(diff<=0){clearInterval(timer);$('countdown').textContent='00:00';return}
+const m=Math.floor(diff/60000),s=Math.floor((diff%60000)/1000);
+$('countdown').textContent=pad(m)+':'+pad(s);
+},1000);
+}
+function startJourney(){
+$('waiting-state').classList.add('hidden');
+$('travel-state').classList.remove('hidden');
+idx=1;
+notif={};
+updateTravel();
+if(navigator.geolocation)watch=navigator.geolocation.watchPosition(onPos,e=>console.error(e),{enableHighAccuracy:true,timeout:5000,maximumAge:0});
+}
+function updateTravel(){
+if(idx>=stops.length){arrived();return}
+const ns=stops[idx];
+$('next-stop').textContent=ns.name;
+const nt=new Date(ns.time*1000);
+startTimer(nt);
+$('next-time').textContent=fmt(nt);
+$('stations-remaining').innerHTML=stops.slice(idx).map((s,i)=>{
+const cls=i===0?'next':'';
+const t=new Date(s.time*1000);
+return `<div class="station-item ${cls}"><strong>${s.name}</strong>
+<div style="font-size:.9em;color:#666;margin-top:5px">${fmt(t)} ${s.platform?'- Quai '+s.platform:''}</div></div>`;
+}).join('');
+}
+function onPos(p){
+pos=p;
+if(idx>=stops.length)return;
+const ns=stops[idx];
+if(!ns.lat||!ns.lon)return;
+const d=dist(p.coords.latitude,p.coords.longitude,ns.lat,ns.lon);
+$('distance-info').textContent=`📍 Distance: ${d.toFixed(1)} km`;
+if(d<1&&!notif[idx]){
+notif[idx]=true;
+if(idx===stops.length-1)showArr();
+else showAppr(ns);
+}
+if(d<.2){idx++;if(idx<stops.length)updateTravel()}
+}
+function showAppr(s){
+notify(`🔔 Prochain: ${s.name}${s.platform?' - Quai '+s.platform:''}`,'warning');
+if('Notification'in window&&Notification.permission==='granted')new Notification('🚉 Prochain arrêt',{body:`${s.name}${s.platform?' - Quai '+s.platform:''}`,vibrate:[200,100,200]});
+}
+function showArr(){
+const fs=stops[stops.length-1];
+$('travel-state').classList.add('hidden');
+$('arrival-state').classList.remove('hidden');
+$('arr-station').textContent=fs.name;
+$('arr-platform').textContent=fs.platform||'?';
+const at=new Date(fs.time*1000);
+startTimer(at);
+$('arr-countdown').textContent=fmt(at);
+notify('⚠️ PRÉPAREZ-VOUS!','danger');
+if('Notification'in window&&Notification.permission==='granted')new Notification('⚠️ PRÉPAREZ-VOUS',{body:`Arrivée à ${fs.name}`,vibrate:[300,100,300,100,300],requireInteraction:true});
+if('vibrate'in navigator)navigator.vibrate([500,200,500,200,500]);
+}
+function arrived(){
+if(watch)navigator.geolocation.clearWatch(watch);
+if(timer)clearInterval(timer);
+notify('✅ Bon voyage!','success');
+setTimeout(()=>{
+switchMode('plan',document.querySelectorAll('.mode-btn')[0]);
+reset();
+},2000);
+}
+function cancel(){
+if(watch)navigator.geolocation.clearWatch(watch);
+if(timer)clearInterval(timer);
+reset();
+switchMode('plan',document.querySelectorAll('.mode-btn')[0]);
+}
+function reset(){
+$('waiting-state').classList.add('hidden');
+$('travel-state').classList.add('hidden');
+$('arrival-state').classList.add('hidden');
+conn=null;stops=[];idx=0;notif={};
+}
+function notify(msg,type='success'){
+const b=document.createElement('div');
+b.className='notification-badge';
+b.textContent=msg;
+if(type==='error')b.style.background='#f44336';
+if(type==='warning')b.style.background='#ff9800';
+if(type==='danger')b.style.background='#f44336';
+document.body.appendChild(b);
+setTimeout(()=>b.remove(),4000);
+}
+function fmt(d){return d.toLocaleTimeString('fr-BE',{hour:'2-digit',minute:'2-digit'})}
+function pad(n){return String(n).padStart(2,'0')}
+</script>
+</body>
+</html>
